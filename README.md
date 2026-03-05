@@ -1,10 +1,9 @@
-instalar últimas versão stable do ren'py launcher
+Instalar última versão stable do Ren'Py Launcher
 https://www.renpy.org/latest.html
 
-baixar GitHub Desktop
+Baixar GitHub Desktop
 https://desktop.github.com/download/
 
-clonar repositório
+Clonar repositório pro seu computador
 
-no Ren'Py Launcher, ir em preferências e adicionar como repositório
-o local onde foi clonado o projeto
+Com o Ren'Py Launcher aberto, ir em preferências e adicionar como repositório o local onde foi clonado o projeto
