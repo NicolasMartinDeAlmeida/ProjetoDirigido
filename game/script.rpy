@@ -41,22 +41,23 @@ label start:
     #return
 
 label choice:
-        robo "Temos um longo caminho pela frente"
-menu:
-    "Sim":
-        jump choices1_a
-    "Talvez":
-        jump choices1_b
+
+    robo "Temos um longo caminho pela frente"
+    menu:
+        "Sim":
+            jump choices1_a
+        "Talvez":
+            jump choices1_b
     
-label choices1_a:
-    show robo happy with dissolve
-    robo "Uhum"
-    jump choices1_common
+    label choices1_a:
+        show robo happy with dissolve
+        robo "Uhum"
+        jump choices1_common
     
-label choices1_b:
-    robo "..."
-    show robo happy with dissolve
-    jump choices1_common
+    label choices1_b:
+        robo "..."
+        show robo happy with dissolve
+        jump choices1_common
     
-label choices1_common:
-    "Vamos ao trabalho!"   
+    label choices1_common:
+        robo "Vamos ao trabalho!"
