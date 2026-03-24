@@ -1,93 +1,36 @@
-name: Warn on direct commits to main
+name: Warn on Direct Commit to Main
+
 on:
   push:
     branches:
       - main
 
-permissions:
-  issues: write
-  checks: write
-  contents: read
-  pull-requests: read
-  actions: read
-
 jobs:
-  detect-direct-commit:
+  check-direct-commit:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
-      - name: Gather push info
-        id: info
+      - name: Check for direct commit
         run: |
-          echo "GITHUB_REF=${GITHUB_REF}" >> $GITHUB_OUTPUT
-          echo "GITHUB_SHA=${GITHUB_SHA}" >> $GITHUB_OUTPUT
-          # get author and committer email/name for the pushed commit
-          commit_author=$(git show -s --format='%an <%ae>' $GITHUB_SHA)
-          commit_message=$(git show -s --format='%s' $GITHUB_SHA)
-          echo "commit_author=${commit_author}" >> $GITHUB_OUTPUT
-          echo "commit_message=${commit_message}" >> $GITHUB_OUTPUT
-          # try to detect if commit is a merge commit from a PR (conventional merge message)
-          is_merge_msg=false
-          if git show -s --format='%P' $GITHUB_SHA | grep -q ' '; then
-            is_merge_msg=true
-          fi
-          # also check commit message patterns (Merge pull request #123)
-          if echo "$commit_message" | grep -Eiq 'merge pull request|merged in|pull request'; then
-            is_merge_msg=true
-          fi
-          echo "is_merge=${is_merge_msg}" >> $GITHUB_OUTPUT
-
-      - name: Query associated pull requests
-        id: prlookup
-        uses: octokit/request-action@v4
-        with:
-          route: GET /repos/{owner}/{repo}/commits/{commit_sha}/pulls
-          owner: ${{ github.repository_owner }}
-          repo: ${{ github.event.repository.name }}
-          commit_sha: ${{ github.sha }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Determine if commit came from a PR
-        id: decide
-        run: |
-          prs_count=$(echo '${{ steps.prlookup.outputs.data }}' | jq 'length')
-          echo "prs_count=$prs_count" >> $GITHUB_OUTPUT
-          is_merge="${{ steps.info.outputs.is_merge }}"
-          if [ "$prs_count" -gt 0 ] || [ "$is_merge" = "true" ]; then
-            echo "is_direct=false" >> $GITHUB_OUTPUT
-          else
-            echo "is_direct=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Post warning (if direct commit)
-        if: ${{ steps.decide.outputs.is_direct == 'true' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          commit_sha=${{ github.sha }}
-          author="${{ steps.info.outputs.commit_author }}"
-          repo_full="${{ github.repository }}"
-          warning_title="Warning: Direct commit to main detected"
-          warning_body="A direct commit was pushed to main.\n\n- Commit: \`${commit_sha}\`\n- Author: ${author}\n\nPlease use pull requests for changes to main. If this was intentional, consider adding an explanatory comment to the PR or creating one referencing this commit."
-
-          # Create an issue to record the warning (alternatively you can create a check or comment)
-          response=$(curl -s -X POST -H "Authorization: token ${GITHUB_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${repo_full}/issues" \
-            -d "$(jq -nc --arg t "$warning_title" --arg b "$warning_body" '{title:$t, body:$b, labels:["direct-commit-warning"]}')")
-
-          issue_url=$(echo "$response" | jq -r .html_url)
-          if [ "$issue_url" = "null" ] || [ -z "$issue_url" ]; then
-            echo "Failed to create issue; falling back to create commit comment"
-            curl -s -X POST -H "Authorization: token ${GITHUB_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/${repo_full}/commits/${commit_sha}/comments" \
-              -d "$(jq -nc --arg b "$warning_body" '{body:$b}')"
-          else
-            echo "Created issue: $issue_url"
+          # Get the commit that triggered this push
+          COMMIT_SHA="${{ github.sha }}"
+          COMMIT_MSG=$(git log -1 --pretty=%B $COMMIT_SHA)
+          PUSHER="${{ github.actor }}"
+          
+          # Check if this is a merge commit (indicates PR merge)
+          PARENT_COUNT=$(git rev-list --parents -n 1 $COMMIT_SHA | wc -w)
+          
+          # If it has 2+ parents, it's a merge commit (from a PR)
+          if [ "$PARENT_COUNT" -lt 3 ]; then
+            # Direct commit detected (not a merge)
+            echo "::error::❌ Direct commit detected on main branch!"
+            echo "::error::Please use Pull Requests for all changes:"
+            echo "::error::1. Create a feature branch"
+            echo "::error::2. Make your changes"
+            echo "::error::3. Open a Pull Request for review"
+            echo "::error::4. Merge via GitHub after approval"
+            exit 1
           fi
