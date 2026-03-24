@@ -18,7 +18,7 @@ label start:
     # add a file (named either "bg room.png" or "bg room.jpg") to the
     # images directory to show it.
 
-    scene bg board
+    scene bg blurred
 
     # This shows a character sprite. A placeholder is used, but you can
     # replace it by adding a file named "eileen happy.png" to the images
@@ -61,3 +61,5 @@ label choice:
     
     label choices1_common:
         robo "Vamos ao trabalho!"
+
+    robo "Aqui vai uma sequência de várias falas para testar o posicionamento do texto, vai saber"
